@@ -1,0 +1,1 @@
+package io.github.sonarnext.wave.server.webhook;
