@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * @author magaofei
- * @date 2021/2/6
+ * @date 2022/3/6
  */
 public class SampleBuildImageResultCallback extends BuildImageResultCallback {
 

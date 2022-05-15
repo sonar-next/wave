@@ -7,7 +7,7 @@ import javax.servlet.http.HttpServletRequest;
 @Service
 public class WebHookServiceImpl implements WebHookService {
 
-    private WebHookManager webHookManager = new WebHookManager();
+    private final WebHookManager webHookManager = new WebHookManager();
 
 
     @Override
