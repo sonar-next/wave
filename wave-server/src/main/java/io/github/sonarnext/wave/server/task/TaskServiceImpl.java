@@ -1,6 +1,7 @@
 package io.github.sonarnext.wave.server.task;
 
 import io.github.sonar.next.wave.EnumProto;
+import io.github.sonarnext.wave.common.dto.TaskDTO;
 import org.springframework.stereotype.Service;
 
 /**
@@ -26,7 +27,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public String addTask(EnumProto.Task task) {
+    public String addTask(TaskDTO task) {
         TaskEntity taskEntity = new TaskEntity();
         taskEntity.setId(task.getId());
         taskEntity.setName(task.getName());

@@ -1,6 +1,8 @@
 package io.github.sonarnext.wave.server.task;
 
 import io.github.sonar.next.wave.EnumProto;
+import io.github.sonarnext.wave.common.dto.TaskDTO;
+import org.springframework.beans.BeanUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,7 +25,7 @@ public class TaskController {
     }
 
     @PostMapping
-    public String addTask(@Validated EnumProto.Task task) {
+    public String addTask(@Validated TaskDTO task) {
         return this.taskService.addTask(task);
     }
 

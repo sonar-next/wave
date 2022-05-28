@@ -6,5 +6,15 @@ option java_outer_classname = "EnumProto";
 message Task {
   string id = 1; // task id
   string name = 2; // task name
+  string projectName = 3; // project name
+  string branch = 4; // task branch
+  int64 startTime = 5; // task start time
+  string language = 6; // task language
+  string gitHost = 7; // git url
+  string namespaceFullPath = 8; // git namespace full path
+  string repositoryPath = 9; // git repository path
+  string sonarHost = 10; // sonar url
+  string commitId = 11; // git commit id
+
 
 }

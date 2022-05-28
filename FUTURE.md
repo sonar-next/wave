@@ -2,7 +2,8 @@
 
 ## Server
 1. 能够接收 SonarQube 和 GitLab 的 Webhook
-2. 能否转发任务到Runner
+2. 自动创建project，自动生成任务
+3. 能否转发任务到Runner
 
 
 ## Runner
