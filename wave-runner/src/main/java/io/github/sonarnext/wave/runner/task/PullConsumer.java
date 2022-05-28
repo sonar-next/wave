@@ -1,37 +1,60 @@
 package io.github.sonarnext.wave.runner.task;
 
-import io.github.sonarnext.wave.common.Task;
+import io.github.sonar.next.wave.EnumProto;
+import io.github.sonar.next.wave.PollTaskRequest;
+import io.github.sonar.next.wave.PollTaskResponse;
+import io.github.sonarnext.wave.common.connection.ConnectionServiceServer;
+import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.LockSupport;
 
 public class PullConsumer {
 
-    private final String URL = System.getProperty("http://localhost:8080/wave/task");
-    private static final ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(1);
+    private static final Logger logger = LoggerFactory.getLogger(PullConsumer.class);
 
-    private static final ThreadPoolExecutor executor = new ThreadPoolExecutor(1, 1,
+    private volatile boolean running = true;
+
+    private final String URL = System.getProperty("SERVER_URL", "http://127.0.0.1:8080") + "/wave/task";
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+    private final ThreadPoolExecutor executor = new ThreadPoolExecutor(1, 1,
             0L, java.util.concurrent.TimeUnit.MILLISECONDS,
             new java.util.concurrent.LinkedBlockingQueue<>(100));
 
     public void start() {
-        scheduler.scheduleAtFixedRate(this::pull, 10, 1, java.util.concurrent.TimeUnit.SECONDS);
+        do {
+            this.pull();
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1000));
+        } while (running);
     }
 
     public void pull() {
 
-        RestTemplate restTemplate = new RestTemplate();
-        Task task = restTemplate.getForObject(URL, Task.class);
+        try {
+            RestTemplate restTemplate = new RestTemplateBuilder().build();
+            EnumProto.Task task = restTemplate.getForObject(URL, EnumProto.Task.class);
 
-        if (task == null) {
-            return;
+            if (task == null) {
+                logger.debug("PullConsumer pull task is null");
+                return;
+            }
+            TaskExecutor taskExecutor = new TaskExecutor();
+            executor.execute(taskExecutor);
+        } catch (RestClientException e) {
+            logger.warn("PullConsumer pull error, reason = {}", e.getMessage());
         }
-        TaskExecutor taskExecutor = new TaskExecutor();
-        executor.execute(taskExecutor);
 
     }
 
+    public void end() {
+        scheduler.shutdown();
+        executor.shutdown();
+    }
 
 }

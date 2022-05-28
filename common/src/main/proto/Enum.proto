@@ -1,8 +1,10 @@
 syntax = "proto3";
 
-message Task {
-  int64 id = 1; // task id
-  string name = 2; // task name
+option java_package = "io.github.sonar.next.wave";
+option java_outer_classname = "EnumProto";
 
+message Task {
+  string id = 1; // task id
+  string name = 2; // task name
 
 }

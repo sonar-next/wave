@@ -1,6 +1,8 @@
 package io.github.sonarnext.wave.server.task;
 
-import io.github.sonarnext.wave.common.Task;
+import io.github.sonar.next.wave.EnumProto;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,8 +18,13 @@ public class TaskController {
     }
 
     @PostMapping
-    public Task pullAndGetTask() {
-        return taskService.pullAndGetTask();
+    public EnumProto.Task pullAndGetTask() {
+        return this.taskService.pullAndGetTask();
+    }
+
+    @PostMapping
+    public String addTask(@Validated EnumProto.Task task) {
+        return this.taskService.addTask(task);
     }
 
 

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+import "Enum.proto";
+
+option java_multiple_files = true;
+option java_package = "io.github.sonar.next.wave";
+option java_outer_classname = "ConnectionLogProto";
+
+
+service TaskService {
+  rpc pollTask(PollTaskRequest) returns (PollTaskResponse) {}
+}
+
+message PollTaskRequest {
+  int64 time = 1;
+}
+
+message PollTaskResponse {
+  int32 code = 1;
+  string message = 2;
+  Task task = 3;
+}
+

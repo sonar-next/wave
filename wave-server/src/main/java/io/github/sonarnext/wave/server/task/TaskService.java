@@ -1,8 +1,10 @@
 package io.github.sonarnext.wave.server.task;
 
-import io.github.sonarnext.wave.common.Task;
+import io.github.sonar.next.wave.EnumProto;
 
 public interface TaskService {
 
-    Task pullAndGetTask();
+    EnumProto.Task pullAndGetTask();
+
+    String addTask(EnumProto.Task task);
 }
