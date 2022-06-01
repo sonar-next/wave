@@ -1,6 +1,8 @@
 package io.github.sonarnext.wave.server.task;
 
 
+import io.github.sonar.next.wave.EnumProto;
+
 import java.util.concurrent.*;
 
 /**
@@ -8,15 +10,14 @@ import java.util.concurrent.*;
  */
 public class TaskManager {
 
-    private static final BlockingQueue<TaskEntity> TASK_ENTITY_LIST = new LinkedBlockingQueue<>(10000);
+    private static final BlockingQueue<EnumProto.Task> TASK_ENTITY_LIST = new LinkedBlockingQueue<>(10000);
 
-    static TaskEntity getTask() throws InterruptedException {
+    static EnumProto.Task getTask() throws InterruptedException {
         return TASK_ENTITY_LIST.poll(10, TimeUnit.SECONDS);
     }
 
-    static boolean addTask(TaskEntity taskEntity) {
-
-        return TASK_ENTITY_LIST.offer(taskEntity);
+    public static boolean addTask(EnumProto.Task task) {
+        return TASK_ENTITY_LIST.offer(task);
     }
 
 }

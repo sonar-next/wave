@@ -11,6 +11,7 @@ public class WebHookManager {
 
     /**
      * 1. switch webhook
+     * {@link io.github.sonarnext.wave.server.webhook.gitlab.GitLabWebHookListener}
      * @param request
      * @param webHookTypeEnum
      */

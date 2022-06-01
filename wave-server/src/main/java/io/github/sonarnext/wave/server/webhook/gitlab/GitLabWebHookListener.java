@@ -1,5 +1,8 @@
 package io.github.sonarnext.wave.server.webhook.gitlab;
 
+import io.github.sonar.next.wave.EnumProto;
+import io.github.sonarnext.wave.server.task.TaskConvert;
+import io.github.sonarnext.wave.server.task.TaskManager;
 import org.gitlab4j.api.webhook.MergeRequestEvent;
 import org.gitlab4j.api.webhook.PushEvent;
 import org.gitlab4j.api.webhook.WebHookListener;
@@ -17,5 +20,8 @@ public class GitLabWebHookListener implements WebHookListener {
     @Override
     public void onPushEvent(PushEvent pushEvent) {
         logger.info("Push event: {}", pushEvent);
+
+        EnumProto.Task task = TaskConvert.eventToTask(pushEvent);
+        TaskManager.addTask(task);
     }
 }

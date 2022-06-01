@@ -13,7 +13,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public EnumProto.Task pullAndGetTask() {
         try {
-            TaskEntity taskEntity = TaskManager.getTask();
+            EnumProto.Task taskEntity = TaskManager.getTask();
             return EnumProto.Task
                     .newBuilder()
                     .setId(taskEntity.getId())
@@ -28,10 +28,11 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public String addTask(TaskDTO task) {
-        TaskEntity taskEntity = new TaskEntity();
-        taskEntity.setId(task.getId());
-        taskEntity.setName(task.getName());
-        TaskManager.addTask(taskEntity);
+        EnumProto.Task taskBO = EnumProto.Task.newBuilder()
+                .setId(task.getId())
+                .setName(task.getName())
+                .build();
+        TaskManager.addTask(taskBO);
         return "success";
     }
 }
