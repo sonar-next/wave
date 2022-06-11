@@ -13,7 +13,7 @@ public class TaskManager {
     private static final BlockingQueue<EnumProto.Task> TASK_ENTITY_LIST = new LinkedBlockingQueue<>(10000);
 
     static EnumProto.Task getTask() throws InterruptedException {
-        return TASK_ENTITY_LIST.poll(10, TimeUnit.SECONDS);
+        return TASK_ENTITY_LIST.poll(5, TimeUnit.SECONDS);
     }
 
     public static boolean addTask(EnumProto.Task task) {
