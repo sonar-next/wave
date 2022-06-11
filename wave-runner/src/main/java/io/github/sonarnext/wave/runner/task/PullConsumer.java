@@ -48,13 +48,17 @@ public class PullConsumer {
         try {
             Pager<TaskVO> task = restTemplate.postForObject(URL, "", Pager.class);
 
-            if (task == null || task.getData() == null || task.getData().isEmpty()) {
+            if (task == null || CollectionUtils.isEmpty(task.getData())) {
                 logger.debug("PullConsumer pull task is null");
                 return;
             }
             logger.info("receive task {}", task.getData());
-            TaskExecutor taskExecutor = new TaskExecutor();
-            executor.execute(taskExecutor);
+            for (TaskVO taskVO : task.getData()) {
+                TaskExecutor taskExecutor = new TaskExecutor();
+                taskExecutor.init(taskVO);
+                executor.execute(taskExecutor);
+            }
+
         } catch (RestClientException e) {
             logger.warn("PullConsumer pull error, reason = {}", e.getMessage());
         }
