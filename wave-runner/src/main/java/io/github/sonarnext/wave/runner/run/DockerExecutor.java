@@ -115,7 +115,7 @@ public class DockerExecutor implements Executor {
             logger.info("wait container cmd");
             try (WaitContainerResultCallback waitContainerResultCallback = new WaitContainerResultCallback()) {
                 int exitCode = dockerClient.waitContainerCmd(containerResponse.getId()).exec(waitContainerResultCallback)
-                        .awaitStatusCode(30, TimeUnit.MINUTES);
+                        .awaitStatusCode(10, TimeUnit.MINUTES);
                 logger.info("exitCode = {}", exitCode);
                 if (exitCode != 0) {
                     throw new IllegalArgumentException("exit = " + exitCode);

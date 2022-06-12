@@ -13,9 +13,14 @@ import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
+import com.google.common.collect.Lists;
 import io.github.sonarnext.wave.runner.command.CommandExitException;
+import io.github.sonarnext.wave.runner.config.ActionConfig;
+import io.github.sonarnext.wave.runner.run.DockerExecutor;
+import io.github.sonarnext.wave.runner.run.Executor;
 import io.github.sonarnext.wave.runner.sonar.DockerBuildTool;
 import io.github.sonarnext.wave.runner.sonar.SonarProperties;
+import org.glassfish.jersey.internal.guava.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
@@ -28,9 +33,9 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class GeneralDockerBuildTool implements DockerBuildTool {
@@ -58,13 +63,7 @@ public class GeneralDockerBuildTool implements DockerBuildTool {
     @Override
     public String build(SonarProperties sonarProperties, Map<String, String> properties) throws IOException, InterruptedException {
 
-        DockerClientConfig standard = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
-        DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder().dockerHost(standard.getDockerHost()).sslConfig(standard.getSSLConfig()).build();
-        DockerClient dockerClient = DockerClientImpl.getInstance(standard, httpClient);
-
         logger.info("start create container ");
-
-        StringBuilder result = new StringBuilder();
 
         String sourcePath = getSourcePath(sonarProperties);
 
@@ -93,16 +92,42 @@ public class GeneralDockerBuildTool implements DockerBuildTool {
         }
         sonarProperties.setDockerfilePath(dockerfilePath.toAbsolutePath().toString());
 
-        String imageId = initAndImageId(dockerClient, result, tags, dockerfileDirectory, dockerfile);
+//        String imageId = initAndImageId(dockerClient, result, tags, dockerfileDirectory, dockerfile);
 
-        logger.info("created imageId = {}", imageId);
+//        logger.info("created imageId = {}", imageId);
 
-        HostConfig hostConfig = getHostConfig();
+//        HostConfig hostConfig = getHostConfig();
 
-        runContainer(dockerClient, result, imageId, hostConfig);
+        Executor executor = new DockerExecutor();
+        convertToActionConfig(sonarProperties, executor);
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.execute(executor);
+        executorService.shutdown();
+        executorService.awaitTermination(10, TimeUnit.HOURS);
 
-        return result.toString();
+//        runContainer(dockerClient, result, imageId, hostConfig);
+
+        return "";
     }
+
+    private static void convertToActionConfig(SonarProperties sonarProperties, Executor executor) {
+        ActionConfig actionConfig = new ActionConfig();
+        actionConfig.setName(sonarProperties.getProjectKey() + "_" + sonarProperties.getBranch());
+        Map<String, String> env = new HashMap<>();
+        actionConfig.setEnv(env);
+        initEnv(env);
+        LinkedHashMap<String, ActionConfig.Job> jobs = new LinkedHashMap<>();
+        ActionConfig.Job job = new ActionConfig.Job();
+        jobs.put("foo", job);
+        actionConfig.setJobs(jobs);
+        ActionConfig.On on = new ActionConfig.On();
+        ActionConfig.Branch branch = new ActionConfig.Branch();
+        branch.setBranches(Lists.newArrayList(sonarProperties.getBranch()));
+        on.setPush(branch);
+        actionConfig.setOn(on);
+        executor.init(actionConfig);
+    }
+
 
     protected static void runContainer(DockerClient dockerClient, StringBuilder result, String imageId, HostConfig hostConfig) throws CommandExitException {
         CreateContainerResponse containerResponse = null;
@@ -118,20 +143,13 @@ public class GeneralDockerBuildTool implements DockerBuildTool {
             // start
             dockerClient.startContainerCmd(containerResponse.getId()).exec();
 
-            showLog(dockerClient, containerResponse.getId(), true, 1, new LogContainerTestCallback() {
-                @Override
-                public void onNext(Frame frame) {
-                    String message = new String(frame.getPayload());
-                    logger.info("{}", message);
-                    result.append(message);
-                    super.onNext(frame);
-                }
-            });
+            LogContainerTestCallback logContainerTestCallback = new LogContainerTestCallback(true);
+            showLog(dockerClient, containerResponse.getId(), true, 1, logContainerTestCallback);
 
             logger.info("wait container cmd");
             try (WaitContainerResultCallback waitContainerResultCallback = new WaitContainerResultCallback()) {
                 int exitCode = dockerClient.waitContainerCmd(containerResponse.getId()).exec(waitContainerResultCallback)
-                        .awaitStatusCode(30, TimeUnit.MINUTES);
+                        .awaitStatusCode(10, TimeUnit.MINUTES);
                 logger.info("exitCode = {}", exitCode);
                 if (exitCode != 0) {
                     throw new CommandExitException("exit code = " + exitCode, result.toString());
@@ -252,12 +270,25 @@ public class GeneralDockerBuildTool implements DockerBuildTool {
         Volume gradleVolume = new Volume("/root/.gradle");
         Volume androidSdkVolume = new Volume("/android-sdk");
         HostConfig hostConfig = new HostConfig();
-        hostConfig.withBinds(new Bind(M2_HOST, mavenRepositoryVolume), new Bind(DOWNLOAD_HOST, downloadVolume),
+        hostConfig.withBinds(
+                new Bind(M2_HOST, mavenRepositoryVolume), new Bind(DOWNLOAD_HOST, downloadVolume),
                 new Bind(GO_HOST, goVolume), new Bind(SONAR_CACHE_HOST, sonarCacheVolume),
                 new Bind(GO_CACHE_HOST, goCacheVolume), new Bind(NPM_HOST, npmCacheVolume),
                 new Bind(PUB_CACHE_HOST, pubCacheVolume), new Bind(GRADLE_HOST, gradleVolume),
                 new Bind(ANDROID_SDK_HOST, androidSdkVolume));
         return hostConfig;
+    }
+
+    protected static void initEnv(Map<String, String> env) {
+        env.put(M2_HOST, "/root/.m2");
+        env.put(DOWNLOAD_HOST, "/download");
+        env.put(GO_HOST, "/go");
+        env.put(SONAR_CACHE_HOST, "/root/.sonar");
+        env.put(GO_CACHE_HOST, "/root/.cache");
+        env.put(NPM_HOST, "/root/.npm");
+        env.put(PUB_CACHE_HOST, "/root/.pub-cache");
+        env.put(GRADLE_HOST, "/root/.gradle");
+        env.put(ANDROID_SDK_HOST, "/android-sdk");
     }
 
     public static void showLog(DockerClient dockerClient, String containerId, boolean follow, int numberOfLines, ResultCallback<Frame> logCallback) {
