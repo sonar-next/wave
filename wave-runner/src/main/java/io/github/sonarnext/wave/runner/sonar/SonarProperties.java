@@ -17,6 +17,13 @@ public class SonarProperties {
 
     private String dockerfile;
 
+    private String httpRepoToUrl;
+
+    private String namespaceFullPath;
+    private String projectPath;
+
+    private String dockerfilePath;
+
     public String getProjectKey() {
         return projectKey;
     }
@@ -119,5 +126,37 @@ public class SonarProperties {
 
     public void setDockerfile(String dockerfile) {
         this.dockerfile = dockerfile;
+    }
+
+    public String getHttpRepoToUrl() {
+        return httpRepoToUrl;
+    }
+
+    public void setHttpRepoToUrl(String httpRepoToUrl) {
+        this.httpRepoToUrl = httpRepoToUrl;
+    }
+
+    public String getNamespaceFullPath() {
+        return namespaceFullPath;
+    }
+
+    public void setNamespaceFullPath(String namespaceFullPath) {
+        this.namespaceFullPath = namespaceFullPath;
+    }
+
+    public String getProjectPath() {
+        return projectPath;
+    }
+
+    public void setProjectPath(String projectPath) {
+        this.projectPath = projectPath;
+    }
+
+    public void setDockerfilePath(String dockerfilePath) {
+        this.dockerfilePath = dockerfilePath;
+    }
+
+    public String getDockerfilePath() {
+        return dockerfilePath;
     }
 }

@@ -1,5 +1,6 @@
 package io.github.sonarnext.wave.runner.sonar;
 
+import io.github.sonarnext.wave.runner.docker.GeneralDockerBuildTool;
 import io.github.sonarnext.wave.runner.docker.SonarScannerDockerGenerator;
 
 public class SonarRunnerSimpleFactory {

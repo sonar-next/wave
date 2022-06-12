@@ -10,7 +10,7 @@ public class SonarProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(SonarProcessor.class);
 
-    private SonarqubeChecker sonarqubeChecker = new SonarqubeChecker();
+    private final SonarqubeChecker sonarqubeChecker = new SonarqubeChecker();
     /**
      * 1. 代码拉取
      * 2. 执行扫描
