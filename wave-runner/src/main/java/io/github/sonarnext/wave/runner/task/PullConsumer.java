@@ -34,7 +34,7 @@ public class PullConsumer {
             0L, java.util.concurrent.TimeUnit.MILLISECONDS,
             new java.util.concurrent.LinkedBlockingQueue<>(100));
 
-    private RestTemplate restTemplate = RestClientConfiguration.restTemplate();
+    private final RestTemplate restTemplate = RestClientConfiguration.restTemplate();
 
     public void start() {
         do {
