@@ -8,27 +8,21 @@ import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
 import com.github.dockerjava.api.exception.NotModifiedException;
 import com.github.dockerjava.api.model.*;
-import com.github.dockerjava.core.DefaultDockerClientConfig;
-import com.github.dockerjava.core.DockerClientConfig;
-import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
-import com.github.dockerjava.transport.DockerHttpClient;
 import com.google.common.collect.Lists;
 import io.github.sonarnext.wave.runner.command.CommandExitException;
+import io.github.sonarnext.wave.runner.command.SonarScannerCommand;
 import io.github.sonarnext.wave.runner.config.ActionConfig;
+import io.github.sonarnext.wave.runner.run.ContainerExecutor;
 import io.github.sonarnext.wave.runner.run.DockerExecutor;
-import io.github.sonarnext.wave.runner.run.Executor;
 import io.github.sonarnext.wave.runner.sonar.DockerBuildTool;
+import io.github.sonarnext.wave.runner.sonar.SonarConstant;
 import io.github.sonarnext.wave.runner.sonar.SonarProperties;
-import org.glassfish.jersey.internal.guava.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -52,72 +46,45 @@ public class GeneralDockerBuildTool implements DockerBuildTool {
     private static final String GRADLE_HOST = PATH_PRE + "/wave/.gradle";
     private static final String ANDROID_SDK_HOST = PATH_PRE + "/wave/android-sdk";
 
-
     private static final Logger logger = LoggerFactory.getLogger(GeneralDockerBuildTool.class);
-
-    @Override
-    public String baseDockerfileName(String version) {
-        return null;
-    }
 
     @Override
     public String build(SonarProperties sonarProperties, Map<String, String> properties) throws IOException, InterruptedException {
 
-        logger.info("start create container ");
+//        String sourcePath = this.getSourcePath(sonarProperties);
 
-        String sourcePath = getSourcePath(sonarProperties);
-
-        logger.info("source path = {}", sourcePath);
-
-        Set<String> tags = getTags(sonarProperties);
-
-        logger.info("tags = {}", tags);
-        Path dockerfileDirectory = Paths.get("build", sonarProperties.getProjectKey());
-        Path dockerfilePath = Paths.get("build", sonarProperties.getProjectKey(), "Dockerfile");
-        initDirectory(dockerfileDirectory);
-
-        File dockerfile = dockerfilePath.toFile();
-        if (dockerfile.exists()) {
-            Files.delete(dockerfile.toPath());
-        }
-        boolean createFileSuccess = dockerfile.createNewFile();
-
-        if (!createFileSuccess) {
-            logger.warn("create docker file fail");
-            throw new IOException("create dockerfile fail");
-        }
-
-        try (OutputStream outputStream = Files.newOutputStream(dockerfile.toPath())){
-            outputStream.write(sonarProperties.getDockerfile().getBytes());
-        }
-        sonarProperties.setDockerfilePath(dockerfilePath.toAbsolutePath().toString());
-
-//        String imageId = initAndImageId(dockerClient, result, tags, dockerfileDirectory, dockerfile);
-
-//        logger.info("created imageId = {}", imageId);
-
-//        HostConfig hostConfig = getHostConfig();
-
-        Executor executor = new DockerExecutor();
-        convertToActionConfig(sonarProperties, executor);
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.execute(executor);
-        executorService.shutdown();
-        executorService.awaitTermination(10, TimeUnit.HOURS);
-
-//        runContainer(dockerClient, result, imageId, hostConfig);
+        this.runContainer(sonarProperties, properties);
 
         return "";
     }
 
-    private static void convertToActionConfig(SonarProperties sonarProperties, Executor executor) {
+    protected String runContainer(SonarProperties sonarProperties, Map<String, String> properties) throws InterruptedException {
+        ContainerExecutor executor = new DockerExecutor();
+        ActionConfig actionConfig = this.convertToActionConfig(sonarProperties, properties);
+        executor.init(actionConfig);
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.execute(executor);
+        executorService.shutdown();
+        executorService.awaitTermination(30, TimeUnit.MINUTES);
+        String imageId = executor.getImageId();
+        logger.info("created imageId = {}", imageId);
+        return imageId;
+    }
+
+    protected ActionConfig convertToActionConfig(SonarProperties sonarProperties, Map<String, String> properties) {
         ActionConfig actionConfig = new ActionConfig();
         actionConfig.setName(sonarProperties.getProjectKey() + "_" + sonarProperties.getBranch());
         Map<String, String> env = new HashMap<>();
+        // volume
         actionConfig.setEnv(env);
-        initEnv(env);
         LinkedHashMap<String, ActionConfig.Job> jobs = new LinkedHashMap<>();
         ActionConfig.Job job = new ActionConfig.Job();
+        env.put("workDir", sonarProperties.getSonarProjectBaseDir());
+        // image name
+        job.setRunsOn(this.getImageName(sonarProperties.getLanguage(), env));
+        job.setEnvironment(env);
+        job.setSteps(this.getSteps(sonarProperties, properties));
+        job.setVolumes(this.initVolume());
         jobs.put("foo", job);
         actionConfig.setJobs(jobs);
         ActionConfig.On on = new ActionConfig.On();
@@ -125,7 +92,47 @@ public class GeneralDockerBuildTool implements DockerBuildTool {
         branch.setBranches(Lists.newArrayList(sonarProperties.getBranch()));
         on.setPush(branch);
         actionConfig.setOn(on);
-        executor.init(actionConfig);
+        return actionConfig;
+    }
+
+    protected String getImageName(String language, Map<String, String> env) {
+        return "adoptopenjdk/maven-openjdk8";
+    }
+
+    protected List<ActionConfig.Step> getSteps(SonarProperties sonarProperties, Map<String, String> properties) {
+        List<ActionConfig.Step> result = new ArrayList<>();
+        ActionConfig.Step step = new ActionConfig.Step();
+        step.setName("build");
+        // 这里如果写根路径会报 index twice 错误
+
+        this.initProperties(properties);
+        List<String> commandString = SonarScannerCommand.propertiesToString(properties);
+
+        String propertiesString = String.join(" ", commandString);
+        List<String> runCommand = new ArrayList<>();
+
+        this.getRunCommandForLanguage(runCommand);
+        String command = String.join(" && ", runCommand);
+
+        step.setRun(Lists.newArrayList(command, propertiesString));
+        result.add(step);
+
+        return result;
+    }
+
+    protected void getRunCommandForLanguage(List<String> runCommand) {
+        runCommand.add("mvn -T 1C compile --settings /root/.m2/conf/settings.xml");
+        runCommand.add("mvn sonar:sonar --settings /root/.m2/conf/settings.xml");
+    }
+
+    /**
+     * init properties for each language
+     * @param properties
+     */
+    protected void initProperties(Map<String, String> properties) {
+        properties.put(SonarConstant.SOURCES, "\"pom.xml,src/main\"");
+        properties.put(SonarConstant.TESTS, ".");
+        properties.put(SonarConstant.PROJECT_BASE_DIR, ".");
     }
 
 
@@ -185,7 +192,7 @@ public class GeneralDockerBuildTool implements DockerBuildTool {
         }
     }
 
-    private static void initDirectory(Path dockerfileDirectory) throws IOException {
+    protected void initDirectory(Path dockerfileDirectory) throws IOException {
         try {
             Files.createDirectory(dockerfileDirectory.getParent());
         } catch (FileAlreadyExistsException e) {
@@ -199,7 +206,7 @@ public class GeneralDockerBuildTool implements DockerBuildTool {
         }
     }
 
-    private static Set<String> getTags(SonarProperties sonarProperties) throws CommandExitException {
+    protected Set<String> getTags(SonarProperties sonarProperties) throws CommandExitException {
         // Docker must use lowercase
         Set<String> tags = new HashSet<>();
         // 这里使用 http repo 是为了防止数据库中有 path 为空的问题
@@ -216,7 +223,7 @@ public class GeneralDockerBuildTool implements DockerBuildTool {
         return tags;
     }
 
-    private static String getSourcePath(SonarProperties sonarProperties) {
+    protected String getSourcePath(SonarProperties sonarProperties) {
         String sourcePath = sonarProperties.getSonarSource();
         // 如果为空, 就使用 根目录
         if (StringUtils.hasLength(sourcePath)) {
@@ -279,16 +286,18 @@ public class GeneralDockerBuildTool implements DockerBuildTool {
         return hostConfig;
     }
 
-    protected static void initEnv(Map<String, String> env) {
-        env.put(M2_HOST, "/root/.m2");
-        env.put(DOWNLOAD_HOST, "/download");
-        env.put(GO_HOST, "/go");
-        env.put(SONAR_CACHE_HOST, "/root/.sonar");
-        env.put(GO_CACHE_HOST, "/root/.cache");
-        env.put(NPM_HOST, "/root/.npm");
-        env.put(PUB_CACHE_HOST, "/root/.pub-cache");
-        env.put(GRADLE_HOST, "/root/.gradle");
-        env.put(ANDROID_SDK_HOST, "/android-sdk");
+    private List<String> initVolume() {
+        List<String> result = new ArrayList<>();
+        result.add(M2_HOST + ":" + "/root/.m2");
+        result.add(DOWNLOAD_HOST + ":" + "/download");
+        result.add(GO_HOST + ":" + "/go");
+        result.add(SONAR_CACHE_HOST + ":" + "/root/.sonar");
+        result.add(GO_CACHE_HOST + ":" + "/root/.cache");
+        result.add(NPM_HOST + ":" + "/root/.npm");
+        result.add(PUB_CACHE_HOST + ":" + "/root/.pub-cache");
+        result.add(GRADLE_HOST + ":" + "/root/.gradle");
+        result.add(ANDROID_SDK_HOST + ":" + "/android-sdk");
+        return result;
     }
 
     public static void showLog(DockerClient dockerClient, String containerId, boolean follow, int numberOfLines, ResultCallback<Frame> logCallback) {

@@ -1,5 +1,7 @@
 package io.github.sonarnext.wave.runner.sonar;
 
+import io.github.sonarnext.wave.common.vo.TaskVO;
+
 public class SonarProperties {
 
     private String projectKey;
@@ -22,7 +24,13 @@ public class SonarProperties {
     private String namespaceFullPath;
     private String projectPath;
 
-    private String dockerfilePath;
+    public static SonarProperties create(TaskVO task) {
+        SonarProperties result = new SonarProperties();
+        result.setProjectKey(task.getProjectName());
+        result.setBranch(task.getBranch());
+        // TODO
+        return result;
+    }
 
     public String getProjectKey() {
         return projectKey;
@@ -152,11 +160,4 @@ public class SonarProperties {
         this.projectPath = projectPath;
     }
 
-    public void setDockerfilePath(String dockerfilePath) {
-        this.dockerfilePath = dockerfilePath;
-    }
-
-    public String getDockerfilePath() {
-        return dockerfilePath;
-    }
 }

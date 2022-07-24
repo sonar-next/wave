@@ -88,7 +88,11 @@ public class ActionConfig {
         /* runs-on  equals image name*/
         @JsonProperty("runs-on")
         private String runsOn;
+
+        @JsonProperty("env")
         private Map<String, String> environment;
+
+        private List<String> volumes;
         private List<Step> steps;
 
         public String getName() {
@@ -131,6 +135,14 @@ public class ActionConfig {
             this.steps = steps;
         }
 
+        public List<String> getVolumes() {
+            return volumes;
+        }
+
+        public void setVolumes(List<String> volumes) {
+            this.volumes = volumes;
+        }
+
         @Override
         public String toString() {
             return "Job{" +
@@ -138,6 +150,7 @@ public class ActionConfig {
                     ", needs=" + needs +
                     ", runsOn='" + runsOn + '\'' +
                     ", environment=" + environment +
+                    ", volumes=" + volumes +
                     ", steps=" + steps +
                     '}';
         }
