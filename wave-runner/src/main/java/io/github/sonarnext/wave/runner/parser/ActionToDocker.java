@@ -49,8 +49,6 @@ public class ActionToDocker {
                 dockerConfig.getRuns().addAll((step.getRun()));
             }
         }
-
-        dockerConfig.setVolume(actionConfig.getEnv());
         dockerConfigConvertToDockerfile(dockerConfig);
         return dockerConfig;
     }
