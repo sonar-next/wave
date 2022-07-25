@@ -26,5 +26,4 @@ public interface Executor extends Runnable {
 
     void init(ActionConfig actionConfig);
 
-
 }

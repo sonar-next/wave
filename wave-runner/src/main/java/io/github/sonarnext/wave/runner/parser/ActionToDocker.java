@@ -29,6 +29,7 @@ import java.util.Set;
  */
 public class ActionToDocker {
 
+
     public static DockerConfig convert(ActionConfig actionConfig) {
         DockerConfig dockerConfig = new DockerConfig();
         Set<String> tag = new HashSet<>();
@@ -42,16 +43,14 @@ public class ActionToDocker {
             if (job.getSteps().isEmpty()) {
                 return dockerConfig;
             }
-            dockerConfig.setImage(job.getRunsOn());
+            dockerConfig.setImage(job.getRunsOn().replace("-", ":"));
 
             for (ActionConfig.Step step : job.getSteps()) {
                 dockerConfig.getRuns().addAll((step.getRun()));
             }
-
-            dockerConfig.setVolume(job.getVolumes());
-            dockerConfig.setEnv(job.getEnvironment());
         }
 
+        dockerConfig.setVolume(actionConfig.getEnv());
         dockerConfigConvertToDockerfile(dockerConfig);
         return dockerConfig;
     }
@@ -61,8 +60,7 @@ public class ActionToDocker {
         String cmd = String.join(" && ", runs);
         String dockerfile = String.format(
                 "FROM %s\n" +
-                "WORKDIR %s\n" +
-                "CMD /bin/sh -c \" %s \"", dockerConfig.getImage(), dockerConfig.getEnv().get("workDir"), cmd);
+                        "CMD /bin/sh -c \" %s \"", dockerConfig.getImage(), cmd);
         dockerConfig.setDockerfile(dockerfile);
     }
 }

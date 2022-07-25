@@ -22,24 +22,23 @@ import java.util.*;
  * @date 2021/2/5
  */
 public class DockerConfig {
-    private List<String> volume;
+    private Map<String, String> volume;
     private String image;
     private Set<String> tag;
     private String dockerfile;
     private String path;
     private List<String> runs;
-    private Map<String, String> env;
 
     public DockerConfig() {
         this.runs = new ArrayList<>();
-        this.volume = new ArrayList<>();
+        this.volume = new HashMap<>();
     }
 
-    public List<String> getVolume() {
+    public Map<String, String> getVolume() {
         return volume;
     }
 
-    public void setVolume(List<String> volume) {
+    public void setVolume(Map<String, String> volume) {
         this.volume = volume;
     }
 
@@ -81,13 +80,5 @@ public class DockerConfig {
 
     public void setRuns(List<String> runs) {
         this.runs = runs;
-    }
-
-    public void setEnv(Map<String, String> env) {
-        this.env = env;
-    }
-
-    public Map<String, String> getEnv() {
-        return env;
     }
 }

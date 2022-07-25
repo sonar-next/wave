@@ -31,7 +31,7 @@ public class SonarProcessor {
 
     }
 
-    protected SonarProperties initSonarProperties(TaskVO task) {
-        return SonarProperties.create(task);
+    private SonarProperties initSonarProperties(TaskVO task) {
+        return new SonarProperties();
     }
 }

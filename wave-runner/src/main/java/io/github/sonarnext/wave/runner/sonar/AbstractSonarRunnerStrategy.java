@@ -23,7 +23,6 @@ public abstract class AbstractSonarRunnerStrategy {
     /**
      * 生成 dockerfile
      */
-    @Deprecated
     DockerGenerator dockerGenerator;
 
     abstract String scan() throws IOException, InterruptedException;

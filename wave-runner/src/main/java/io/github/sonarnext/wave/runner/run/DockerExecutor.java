@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
  * @author magaofei
  * @date 2021/1/24
  */
-public class DockerExecutor implements ContainerExecutor {
+public class DockerExecutor implements Executor {
 
     private static final Logger logger = LoggerFactory.getLogger(DockerExecutor.class);
 
@@ -65,7 +65,6 @@ public class DockerExecutor implements ContainerExecutor {
     public void init(ActionConfig actionConfig) {
 
         DockerClientConfig standard = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
-        // https://github.com/docker/for-mac/issues/770#issuecomment-252560286
         DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder().dockerHost(URI.create("tcp://127.0.0.1:2376")).sslConfig(standard.getSSLConfig()).build();
         this.dockerClient = DockerClientImpl.getInstance(standard, httpClient);
         this.dockerConfig = ActionToDocker.convert(actionConfig);
@@ -90,10 +89,9 @@ public class DockerExecutor implements ContainerExecutor {
         CreateContainerResponse containerResponse;
         HostConfig hostConfig = new HostConfig();
         List<Bind> bindList = new ArrayList<>();
-        for (String entry : this.dockerConfig.getVolume()) {
-            String[] entries = entry.split(":");
-            String host = entries[0];
-            String containerVolume = entries[1];
+        for (Map.Entry<String, String> entry : this.dockerConfig.getVolume().entrySet()) {
+            String host = entry.getKey();
+            String containerVolume = entry.getValue();
             bindList.add(new Bind(host, new Volume(containerVolume)));
         }
         hostConfig.withBinds(bindList);
@@ -195,10 +193,5 @@ public class DockerExecutor implements ContainerExecutor {
 
     public void setDockerConfig(DockerConfig dockerConfig) {
         this.dockerConfig = dockerConfig;
-    }
-
-    @Override
-    public String getImageId() {
-        return imageId;
     }
 }
